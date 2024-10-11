@@ -34,11 +34,27 @@ function SwitchAccessory(log, config) {
 }
 
 SwitchAccessory.prototype.setPowerState = function(value, callback) {
-  this.log("Setting switch to %s", value);
+  this.log("Setting switch to %s", value ? "ON" : "OFF");
+
+  // Check if the switch is inverted
   if (this.invert) value = !value;
-  rpio.write(this.pin, (value ? rpio.LOW : rpio.HIGH));
+
+  // Write the value to the GPIO pin
+  rpio.write(this.pin, value ? rpio.LOW : rpio.HIGH);
+
+  // If the switch is set to ON, set a timeout to revert it back to OFF after 2000ms
+  if (value) {
+    setTimeout(() => {
+      this.log("Reverting switch back to OFF after 2000ms");
+      rpio.write(this.pin, this.invert ? rpio.LOW : rpio.HIGH);
+
+      // Update Homebridge characteristic state to OFF
+      this.service.getCharacteristic(Characteristic.On).updateValue(false);
+    }, 2000);
+  }
+
   callback();
-}
+};
 
 SwitchAccessory.prototype.getServices = function() {
   return [this.infoService, this.service];
